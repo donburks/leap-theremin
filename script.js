@@ -10,6 +10,17 @@ if ((typeof(WebSocket) == 'undefined') &&
 	WebSocket = MozWebSocket;
 }
 
+function normalizeGain(gainval) {
+  if (gainval < 0){
+    gainval = 0;
+  }
+  if (gainval > 1){
+    gainval = 1;
+  } 
+
+  return gainval;
+}
+
 // Create the socket with event handlers
 function init() {
 	//Create and open the socket
@@ -26,24 +37,17 @@ function init() {
 		if(state > 0) {
 			if(obj.pointables.length > 0) {
 				var value = obj.pointables[0].tipPosition[0];
-				var intensity = $('#intensity').val();
-				var modified = (350 - value) * intensity;
+				var modified = 350 - value;
 				if( modified <= 0 ) {
 					modified = 5;
 				}
 				modified = modified.toFixed(2);
 
-				var gainval = (obj.pointables[0].tipPosition[1] - 25) / 600;
-				if (gainval < 0){
-					gainval = 0;
-				}
-				if (gainval > 1){
-					gainval = 1;
-				}
+				var gainval = normalizeGain((obj.pointables[0].tipPosition[1] - 25) / 600);
 
 				oscillator.frequency.value = modified;
 				gainer.gain.value = gainval;
-				$('#frequency').html(modified + ' Hz');
+				$('#frequency').text(modified + ' Hz');
 			}			
 		}
 	};
@@ -61,48 +65,37 @@ function init() {
 }
 
 $(function() {
-	init();
+  init();
 
-	$( "#slider" ).slider({
-        value: 10,
-        min: 1,
-        max: 30,
-        step: 1,
-        slide: function( event, ui ) {
-            $( "#intensity" ).val( ui.value );
-        }
-    });
+  $('#play').on('click', function() {
+    state = 1;
+    context = new AudioContext(),
+    oscillator = context.createOscillator();
+    gainer = context.createGain();
+    gainer.connect(context.destination);
+    oscillator.connect(gainer);
+    oscillator.frequency.value = 901;
+    oscillator.start();
 
-    $('#play').click(function() {
-    	state = 1;
-		context = new webkitAudioContext(),
-		oscillator = context.createOscillator()
-		gainer = context.createGain();
-		gainer.connect(context.destination);
-		oscillator.connect(gainer);
-		oscillator.frequency.value = 901;
-		oscillator.start(0);
+    $(this).addClass('active');
+    $('#stop').removeClass('active');
+    $('#frequency').text('900.00 Hz');
+  });
 
-		$(this).addClass('active');
-		$('#stop').removeClass('active');
-		$('#frequency').html('900.00 Hz');
-    });
+  $('#stop').click(function() {
+    oscillator.stop();
+    state = 0;
 
-    $('#stop').click(function() {
-    	oscillator.stop(0);
-		state = 0;
-	
-		$(this).addClass('active');
-		$('#play').removeClass('active');
-		$('button.wave').removeClass('active');
-    });
+    $(this).addClass('active');
+    $('#play').add('button.wave').removeClass('active');
+  });
 
-    $('button.wave').click(function() {
-    	if(state > 0) {
-    		$('button.wave').removeClass('active');
-    		$(this).addClass('active');
-			oscillator.type = $(this).val();
-		}
-    });
+  $('button.wave').on('click', function() {
+    if(state > 0) {
+      $('button.wave').removeClass('active');
+      $(this).addClass('active');
+      oscillator.type = $(this).val();
+    }
+  });
 
 });
